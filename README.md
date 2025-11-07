@@ -1,12 +1,99 @@
 # GYM_Project_DB
 
+헬스장 회원 관리 시스템입니다. 키오스크를 통한 회원 입장 관리와 관리자용 웹 인터페이스를 제공합니다.
+
+## 설치 및 실행
+
+### 백엔드
+
+1. Python 3.8 이상 설치
+2. 의존성 설치:
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+3. 환경 변수 설정:
+`.env` 파일을 backend 폴더에 생성하고 다음 내용 추가:
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=gym_admin
+DB_PASSWORD=your_password
+DB_NAME=gym_management
+SECRET_KEY=your_secret_key
+API_PREFIX=/api
+```
+
+4. 서버 실행:
+```bash
+cd backend
+uvicorn app.main:app --reload
+```
+
+### 프론트엔드
+
+1. Node.js 16 이상 설치
+2. 의존성 설치:
+```bash
+cd frontend
+npm install
+```
+
+3. 개발 서버 실행:
+```bash
+npm run dev
+```
+
+## 기술 스택
+
+- Backend: FastAPI
+- Database: MySQL with pymysql
+- Frontend: React
 
 ### 디렉토리 구조
 ```
- GYM_PROJECT_DB
-
-
+GYM_PROJECT_DB
+├── backend/           # FastAPI 백엔드 서버
+│   ├── app/
+│   │   ├── routers/  # API 엔드포인트
+│   │   ├── services/ # 비즈니스 로직
+│   │   └── repositories/ # 데이터베이스 액세스
+│   └── requirements.txt
+└── frontend/          # React 프론트엔드
 ```
+
+## API 문서
+
+API 문서는 다음 URL에서 확인할 수 있습니다:
+- Swagger UI: `/api/docs`
+- ReDoc: `/api/redoc`
+
+### 주요 API 엔드포인트
+
+#### 키오스크 (사용자)
+- `POST /api/kiosk/verify` - 전화번호로 회원 확인
+- `POST /api/kiosk/checkin` - 회원 입장 처리
+
+#### 관리자
+- `POST /api/admin/login` - 관리자 로그인
+- `PUT /api/admin/change-password` - 관리자 비밀번호 변경
+
+#### 회원 관리
+- `GET /api/members` - 회원 목록 조회
+- `POST /api/members` - 새 회원 등록
+- `PUT /api/members/{member_id}` - 회원 정보 수정
+- `DELETE /api/members/{member_id}` - 회원 삭제
+
+#### 체크인/출입 관리
+- `GET /api/checkin/today` - 당일 입장 회원 목록
+- `GET /api/checkin/stats` - 출입 통계
+
+#### 대여 관리
+- `GET /api/rentals/lockers` - 사물함 대여 현황
+- `POST /api/rentals/lockers` - 사물함 대여
+- `GET /api/rentals/uniforms` - 회원복 대여 현황
+- `POST /api/rentals/uniforms` - 회원복 대여
 
 ### 기능정의
 

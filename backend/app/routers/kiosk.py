@@ -6,7 +6,7 @@ from ..services.checkin_service import CheckInService
 from ..schemas.member import MemberCreate, MemberUpdate, MemberResponse
 from ..schemas.checkin_log import CheckInLogCreate, CheckInLogResponse
 
-router = APIRouter(prefix="/api/kiosk", tags=["kiosk"])
+router = APIRouter(prefix="/kiosk", tags=["kiosk"])
 
 @router.post("/search-by-phone")
 def search_by_phone(

@@ -1,12 +1,6 @@
-from datetime import timedelta
-from typing import Dict, Optional, Any
-from fastapi import HTTPException, status, Depends
-from jose import JWTError
+from typing import Dict, Any
+from fastapi import HTTPException, status
 from ..repositories.admin_repository import AdminRepository
-from ..utils.security import create_access_token, verify_token, oauth2_scheme
-from ..config import get_settings
-
-settings = get_settings()
 
 
 class AdminService:
@@ -16,20 +10,15 @@ class AdminService:
         self.admin_repo = AdminRepository()
 
     def verify_admin(self, password: str) -> Dict:
+        """관리자 비밀번호 확인 (토큰 발급 없음)."""
         if not self.admin_repo.verify_password(self.db, password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="비밀번호가 일치하지 않습니다."
             )
 
-        access_token = create_access_token(
-            data={"sub": "admin"},
-            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        )
-
         return {
             "status": "success",
-            "token": access_token,
             "message": "인증 성공"
         }
 
@@ -53,23 +42,3 @@ class AdminService:
             "status": "success",
             "message": "비밀번호가 변경되었습니다."
         }
-
-    async def get_current_admin(self, token: str = Depends(oauth2_scheme)) -> Dict:
-        credentials_exception = HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="인증이 필요합니다.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-        try:
-            payload = verify_token(token)
-            if payload.get("sub") != "admin":
-                raise credentials_exception
-        except JWTError:
-            raise credentials_exception
-
-        admin = self.admin_repo.get_admin(self.db)
-        if not admin:
-            raise credentials_exception
-
-        return {"admin_id": admin.get('id')}
