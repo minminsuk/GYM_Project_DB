@@ -59,3 +59,51 @@ def member_checkin(
     # 입장 처리
     checkin_result = checkin_service.process_checkin(member_id)
     return checkin_result
+
+
+@router.post("/checkout/{member_id}")
+def member_checkout(
+    member_id: int,
+    db = Depends(get_db)
+) -> Dict:
+    checkin_service = CheckInService(db)
+
+    result = checkin_service.checkout_by_member(member_id)
+    return result
+
+
+@router.post("/checkout-by-phone")
+def checkout_by_phone(
+    last_four_digits: str,
+    db = Depends(get_db)
+) -> Dict:
+    if not last_four_digits.isdigit() or len(last_four_digits) != 4:
+        raise HTTPException(
+            status_code=400,
+            detail="전화번호 뒷자리 4자리를 입력해주세요."
+        )
+
+    member_service = MemberService(db)
+    members = member_service.search_by_last_four_digits(last_four_digits)
+
+    if not members:
+        return {
+            "status": "not_found",
+            "message": "등록된 회원이 없습니다."
+        }
+
+    # 단일 회원이면 바로 퇴장 처리
+    if len(members) == 1:
+        member_id = members[0].get('member_id')
+        checkin_service = CheckInService(db)
+        return checkin_service.checkout_by_member(member_id)
+
+    # 동명이인(또는 뒷자리 동일)인 경우 후보 목록 반환
+    return {
+        "status": "duplicate",
+        "count": len(members),
+        "members": [
+            {"member_id": m.get('member_id'), "name": m.get('name'), "phone_number": m.get('phone_number')}
+            for m in members
+        ]
+    }

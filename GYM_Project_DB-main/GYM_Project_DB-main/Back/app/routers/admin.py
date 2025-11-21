@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from datetime import date
 from ..database import get_db
 from ..services.admin_service import AdminService
+from ..repositories.checkin_repository import CheckInRepository
 from ..schemas.admin import AdminUpdate
 from ..utils.security import oauth2_scheme
 
@@ -187,65 +188,75 @@ async def get_member(
 @router.get("/members/{member_id}/checkins")
 async def get_member_checkins(
     member_id: int,
+    year: int = Query(None),
+    month: int = Query(None),
     cursor = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ) -> Dict:
     """
-    회원별 출입 기록 조회
-    
+    회원별 출입 기록 조회 (입장 및 퇴장 시간 포함)
+
     - **member_id**: 회원 ID
+    - **year, month**: 조회할 연월 (기본: 현재 연월)
     """
     admin_service = AdminService(cursor)
     await admin_service.get_current_admin(token)
-    
+
+    # 기본 연월 처리
+    from datetime import date, datetime
+    today = date.today()
+    q_year = year or today.year
+    q_month = month or today.month
+
     try:
-        # ⭐ 단순화된 SQL 쿼리
-        sql = """
-        SELECT 
-            id,
-            member_id,
-            created_at
-        FROM checkins
-        WHERE member_id = %s
-        ORDER BY created_at DESC
-        LIMIT 50
-        """
-        cursor.execute(sql, (member_id,))
-        raw_checkins = cursor.fetchall()
-        
-        # ⭐ Python에서 date, time, type 필드 추가
+        checkin_repo = CheckInRepository()
+        raw_checkins = checkin_repo.get_member_checkins(cursor, member_id, q_year, q_month)
+
         checkins = []
         for record in raw_checkins:
-            created_at = record['created_at']
-            
-            # datetime 객체로 변환
-            if isinstance(created_at, str):
-                from datetime import datetime
-                created_at = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
-            
+            # 지원되는 필드명 처리
+            checkin_time = record.get('checkin_time') or record.get('created_at')
+            checkout_time = record.get('checkout_time') or record.get('ended_at')
+
+            # 문자열일 경우 datetime으로 파싱
+            if isinstance(checkin_time, str):
+                checkin_time = datetime.strptime(checkin_time, '%Y-%m-%d %H:%M:%S')
+            if isinstance(checkout_time, str):
+                checkout_time = datetime.strptime(checkout_time, '%Y-%m-%d %H:%M:%S')
+
+            duration_minutes = None
+            status_text = '입장 중'
+            if checkout_time:
+                delta = checkout_time - checkin_time
+                duration_minutes = int(delta.total_seconds() / 60)
+                status_text = '퇴장'
+
             checkins.append({
-                'id': record['id'],
-                'member_id': record['member_id'],
-                'date': created_at.strftime('%Y-%m-%d'),
-                'time': created_at.strftime('%H:%M'),
-                'type': '입장',
-                'created_at': created_at.isoformat()
+                'checkin_id': record.get('checkin_id') or record.get('id'),
+                'member_id': record.get('member_id'),
+                'date': checkin_time.strftime('%Y-%m-%d'),
+                'checkin_time': checkin_time.strftime('%H:%M'),
+                'checkout_time': checkout_time.strftime('%H:%M') if checkout_time else None,
+                'duration_minutes': duration_minutes,
+                'status': status_text
             })
-        
+
         return {
             "status": "success",
             "checkins": checkins,
-            "total": len(checkins)
+            "total": len(checkins),
+            "year": q_year,
+            "month": q_month
         }
-        
+
     except Exception as e:
         import traceback
         print("===== 출입 기록 조회 에러 =====")
-        print(f"member_id: {member_id}")
+        print(f"member_id: {member_id}, year: {q_year}, month: {q_month}")
         print(f"Error: {str(e)}")
         print(traceback.format_exc())
         print("==============================")
-        
+
         raise HTTPException(
             status_code=500,
             detail=f"출입 기록 조회 실패: {str(e)}"

@@ -90,6 +90,18 @@ class CheckInService:
             "duration_minutes": int(duration.total_seconds() / 60)
         }
 
+    def checkout_by_member(self, member_id: int) -> Dict:
+        """Find active checkin for member and perform checkout by member_id."""
+        active = self.checkin_repo.get_active_checkin(self.db, member_id)
+        if not active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="현재 입장 중인 기록이 없습니다."
+            )
+
+        checkin_id = active.get('checkin_id')
+        return self.process_checkout(checkin_id)
+
     def get_today_checkins(
         self,
         page: int = 1,
