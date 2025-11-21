@@ -50,9 +50,10 @@ def get_members_by_membership_duration(
         m.phone_number,
         mt.name as membership_type_name,
         mt.duration_months,
-        m.membership_start_date,
-        m.membership_end_date,
-        CASE WHEN m.membership_end_date IS NULL THEN 'active' WHEN m.membership_end_date < CURDATE() THEN 'expired' ELSE 'active' END as status
+    m.membership_start_date,
+    m.membership_end_date,
+    DATEDIFF(m.membership_end_date, CURDATE()) as days_remaining,
+    CASE WHEN m.membership_end_date IS NULL THEN 'active' WHEN m.membership_end_date < CURDATE() THEN 'expired' ELSE 'active' END as status
     FROM members m
     JOIN membership_types mt ON m.membership_type_id = mt.id
     WHERE {where_clause}
@@ -107,9 +108,10 @@ def get_uniform_rentals_by_duration(
         u.member_id,
         m.name,
         m.phone_number,
-        u.rental_start_date,
-        u.rental_end_date,
-        u.rental_type,
+    u.rental_start_date,
+    u.rental_end_date,
+    DATEDIFF(u.rental_end_date, CURDATE()) as days_remaining,
+    u.rental_type,
         mt.name as membership_type_name,
         CASE WHEN u.rental_end_date IS NULL THEN 'active' WHEN u.rental_end_date < CURDATE() THEN 'expired' ELSE 'active' END as rental_status
     FROM uniform_rentals u
@@ -134,7 +136,7 @@ def get_locker_rentals_by_duration(
     skip: int = 0,
     limit: int = 100,
 ) -> Tuple[List[dict], int]:
-    """
+    """ 
     라커룸 렌탈권을 가진 회원 조회.
     duration_months: optional - 회원권 기간 기반 필터
     status: 'all' or 'expired'
@@ -168,10 +170,11 @@ def get_locker_rentals_by_duration(
         l.member_id,
         m.name,
         m.phone_number,
-        l.locker_number,
-        l.rental_start_date,
-        l.rental_end_date,
-        l.rental_type,
+    l.locker_number,
+    l.rental_start_date,
+    l.rental_end_date,
+    DATEDIFF(l.rental_end_date, CURDATE()) as days_remaining,
+    l.rental_type,
         mt.name as membership_type_name,
         CASE WHEN l.rental_end_date IS NULL THEN 'active' WHEN l.rental_end_date < CURDATE() THEN 'expired' ELSE 'active' END as rental_status
     FROM locker_rentals l
